@@ -55,6 +55,24 @@ Non-allowlisted accounts can sign in but only see “Access denied”; they cann
 
 **Saves from `/admin` fail (especially About / Process)?** Run **`fix_authenticated_writes.sql`** once so role `authenticated` can perform `INSERT`/`UPDATE`/`DELETE` (RLS still restricts who can edit). New installs already include these grants in **`schema.sql`** / **`populate_once.sql`**.
 
+## Contact form email ([Web3Forms](https://web3forms.com))
+
+Submissions are saved to **`contact_submissions`** (visible in **`/admin`**). Optional **email alerts** use Web3Forms from the browser (no server deploy).
+
+1. Sign up at [web3forms.com](https://web3forms.com) and create a form to get an **Access Key**.
+2. Restrict the key to your **production domain** (and `localhost` for dev) in their dashboard if offered.
+3. In `.env`, set:
+
+   ```bash
+   VITE_WEB3FORMS_ACCESS_KEY=your_access_key_here
+   ```
+
+4. Restart `npm run dev` / rebuild for production.
+
+If the key is missing, the form still saves to Supabase only. If Web3Forms fails after a successful save, the UI shows a short warning so visitors know they can call or email you directly.
+
+---
+
 ## Re-running seed
 
 `seed.sql` deletes all rows in `hero_stats` and `services`, then inserts the default set again. It does **not** remove custom edits to `hero_section` or `services_section` (those use `ON CONFLICT` upsert). Comment out the `delete` statements if you only want to refresh lists manually.

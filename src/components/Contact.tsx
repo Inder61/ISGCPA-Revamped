@@ -9,6 +9,7 @@ export function Contact() {
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [mailNotifyWarn, setMailNotifyWarn] = useState(false);
 
   const serviceOptions = useMemo(
     () => [...services.map((s) => s.title), OTHER_INQUIRY],
@@ -19,6 +20,7 @@ export function Contact() {
     e.preventDefault();
     setSent(false);
     setSubmitError(null);
+    setMailNotifyWarn(false);
     const sb = getSupabase();
     const form = e.currentTarget;
     const fd = new FormData(form);
@@ -47,12 +49,43 @@ export function Contact() {
       service_interest: serviceInterest || null,
       message,
     });
-    setBusy(false);
 
     if (error) {
+      setBusy(false);
       setSubmitError(error.message || "Could not send your message. Please try again.");
       return;
     }
+
+    const web3Key = import.meta.env.VITE_WEB3FORMS_ACCESS_KEY?.trim();
+    if (web3Key) {
+      try {
+        const w3Res = await fetch("https://api.web3forms.com/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({
+            access_key: web3Key,
+            subject: `Website contact: ${name}`,
+            from_name: name,
+            name,
+            email,
+            replyto: email,
+            phone: phone || "",
+            service_interest: serviceInterest || "",
+            message,
+          }),
+        });
+        const w3Json = (await w3Res.json()) as { success?: boolean; message?: string };
+        if (!w3Res.ok || !w3Json.success) {
+          console.error("Web3Forms notify failed:", w3Json.message ?? w3Res.status);
+          setMailNotifyWarn(true);
+        }
+      } catch (err) {
+        console.error("Web3Forms notify failed:", err);
+        setMailNotifyWarn(true);
+      }
+    }
+
+    setBusy(false);
 
     setSent(true);
     form.reset();
@@ -128,9 +161,17 @@ export function Contact() {
               </p>
             ) : null}
             {sent && !submitError ? (
-              <p className="contact-form__success" role="status">
-                Thank you — your message has been sent. We will reply shortly.
-              </p>
+              <>
+                <p className="contact-form__success" role="status">
+                  Thank you — your message has been sent. We will reply shortly.
+                </p>
+                {mailNotifyWarn ? (
+                  <p className="contact-form__warn" role="status">
+                    We saved your message, but the instant email alert did not go through. We may still
+                    reply from our inbox — or reach us by phone or email on the left.
+                  </p>
+                ) : null}
+              </>
             ) : null}
             <button type="submit" className="btn btn--primary-solid contact-form__submit" disabled={busy}>
               {busy ? "Sending…" : "Send message"}
