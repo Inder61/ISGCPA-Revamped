@@ -1,0 +1,99 @@
+:root {
+  --color-primary: #0d5c4e;
+  --color-primary-dark: #094a3f;
+  --color-gold: #b5914a;
+  --color-gold-muted: #c4a86a;
+  /* Dark surfaces: matched to logo field green (ISG CPA mark) */
+  --color-ink: #1b4332;
+  --color-ink-soft: #234a3a;
+  --color-cream: #f7f4ef;
+  --color-cream-deep: #ebe6dd;
+  --color-teal-tint: #e4efec;
+  --color-white: #ffffff;
+  --color-muted: #5c5a56;
+  /* Display serif: hero titles, section headings, footer wordmark (e.g. "ISG Consulting") */
+  --font-display: "Cormorant Garamond", Georgia, serif;
+  --font-body: "DM Sans", system-ui, sans-serif;
+  --space-section: clamp(4rem, 10vw, 7rem);
+  --nav-height: 4.25rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-optical-sizing: auto;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--color-ink);
+  background: var(--color-cream);
+  -webkit-font-smoothing: antialiased;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  border-radius: 0;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 3px;
+}
+
+.header__links a:focus-visible,
+.header__brand:focus-visible {
+  outline-offset: 6px;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  line-height: 1.15;
+  margin: 0;
+}
+
+p {
+  margin: 0;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
