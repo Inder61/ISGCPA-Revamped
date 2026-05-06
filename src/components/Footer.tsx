@@ -27,7 +27,7 @@ export function Footer() {
               <a href="#contact">Contact</a>
             </li>
             <li>
-              <a href="#services">Resources</a>
+              <a href="#resources">Resources</a>
             </li>
           </ul>
         </div>

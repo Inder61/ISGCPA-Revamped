@@ -19,7 +19,7 @@
   justify-content: space-between;
   gap: 1rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid rgba(27, 67, 50, 0.15);
+  border-bottom: 1px solid rgba(var(--color-primary-rgb), 0.15);
 }
 
 .admin-bar h1 {
@@ -67,7 +67,7 @@
 
 .admin-card {
   background: var(--color-white);
-  border: 1px solid rgba(27, 67, 50, 0.18);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.18);
   padding: clamp(1.25rem, 3vw, 1.75rem);
 }
 
@@ -81,6 +81,16 @@
   font-size: 1.35rem;
   margin: 0 0 1rem;
   color: var(--color-primary-dark);
+}
+
+.admin-h3 {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  margin: 1.75rem 0 0.75rem;
 }
 
 .admin-h1 {
@@ -120,7 +130,7 @@
 .admin-field input,
 .admin-field textarea {
   padding: 0.65rem 0.85rem;
-  border: 1px solid rgba(27, 67, 50, 0.2);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.2);
   background: var(--color-cream);
   font-size: 0.9375rem;
 }
@@ -140,7 +150,7 @@
 .admin-row-actions input[type="number"] {
   width: 4rem;
   padding: 0.45rem 0.5rem;
-  border: 1px solid rgba(27, 67, 50, 0.2);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.2);
   background: var(--color-cream);
 }
 
@@ -184,7 +194,7 @@
 .admin-table td {
   text-align: left;
   padding: 0.5rem 0.65rem;
-  border: 1px solid rgba(27, 67, 50, 0.15);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.15);
   vertical-align: top;
 }
 
@@ -205,7 +215,7 @@
 }
 
 .admin-service-block {
-  border: 1px solid rgba(27, 67, 50, 0.12);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.12);
   padding: 1rem;
   margin-bottom: 1rem;
   background: var(--color-cream);

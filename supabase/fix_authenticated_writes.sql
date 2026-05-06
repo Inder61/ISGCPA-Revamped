@@ -14,3 +14,6 @@ grant select on table public.site_contact to anon, authenticated;
 grant insert on table public.contact_submissions to anon, authenticated;
 grant select, delete on table public.contact_submissions to authenticated;
 grant insert, update, delete on table public.site_contact to authenticated;
+grant insert, update, delete on table public.resources_section to authenticated;
+grant insert, update, delete on table public.resource_categories to authenticated;
+grant insert, update, delete on table public.site_resources to authenticated;

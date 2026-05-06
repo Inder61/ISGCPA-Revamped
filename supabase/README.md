@@ -49,11 +49,28 @@ Non-allowlisted accounts can sign in but only see “Access denied”; they cann
 | `process_steps` | Steps (`step_number` e.g. `01`, `title`, `body`, `sort_order`). |
 | `site_contact` | Single row (`id = 1`): office line, short address, phone display + `phone_href`, email, footer brand (`brand_primary` + `brand_accent`), tagline, copyright name, legal line. |
 | `contact_submissions` | Rows created when visitors submit the contact form (`name`, `email`, `phone`, `service_interest`, `message`). Public **insert** only; editors read/delete in **`/admin`**. |
+| `resources_section` | Homepage resources block heading (`section_label`, `section_title`). |
+| `resource_categories` | Resource group names; shown as subheadings on the site. |
+| `site_resources` | Download metadata; links resolve to public URLs in the **`Resources`** Storage bucket. |
 | `allowed_editors` | Email addresses permitted to use **`/admin`** when signed in (maintain via SQL Editor). |
 
 **Already have a database from before About/Process?** Create the new tables (see **`schema.sql`** from `about_section` onward), run the **About + Process** section of **`populate_once.sql`**, then run **`admin_auth.sql`** again for editor policies.
 
 **Saves from `/admin` fail (especially About / Process)?** Run **`fix_authenticated_writes.sql`** once so role `authenticated` can perform `INSERT`/`UPDATE`/`DELETE` (RLS still restricts who can edit). New installs already include these grants in **`schema.sql`** / **`populate_once.sql`**.
+
+## Public resources (downloads)
+
+Visitors see a **Resources** section on the homepage (`#resources`). Files are stored in the Storage bucket **`Resources`**; metadata and categories live in Postgres.
+
+| Table | Purpose |
+|--------|---------|
+| `resources_section` | Single row (`id = 1`): small label + main heading above the resource lists. |
+| `resource_categories` | Category names and `sort_order` (group files on the public page). |
+| `site_resources` | One row per file: `category_id`, `title`, `description`, `storage_path`, `file_name`, sizes, `is_published`, `sort_order`. |
+
+**New project:** tables and grants are in **`schema.sql`**; bucket + RLS policies are in **`admin_auth.sql`** (after `is_site_editor()`). **`populate_once.sql`** seeds `resources_section`.
+
+**Existing database** (already deployed before this feature): run **`migrate_resources.sql`** once in the SQL Editor (after **`admin_auth.sql`** has been applied at least once). Then open **`/admin`** → **Public resources** to add categories and uploads.
 
 ## Contact form email ([Web3Forms](https://web3forms.com))
 

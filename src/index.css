@@ -1,14 +1,17 @@
 :root {
-  --color-primary: #0d5c4e;
-  --color-primary-dark: #094a3f;
+  --color-primary: #0d544a;
+  --color-primary-dark: #0a4039;
+  /* R, G, B of --color-primary (for rgba(var(--color-primary-rgb), a)) */
+  --color-primary-rgb: 13, 84, 74;
   --color-gold: #b5914a;
   --color-gold-muted: #c4a86a;
-  /* Dark surfaces: matched to logo field green (ISG CPA mark) */
-  --color-ink: #1b4332;
-  --color-ink-soft: #234a3a;
+  /* Text and dark UI panels: same family as the nav / primary green */
+  --color-ink: #0d544a;
+  --color-ink-soft: #115247;
   --color-cream: #f7f4ef;
   --color-cream-deep: #ebe6dd;
-  --color-teal-tint: #e4efec;
+  /* Light section wash tinted from primary */
+  --color-teal-tint: #e6f0ed;
   --color-white: #ffffff;
   --color-muted: #5c5a56;
   /* Display serif: hero titles, section headings, footer wordmark (e.g. "ISG Consulting") */

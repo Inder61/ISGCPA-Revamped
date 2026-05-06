@@ -4,6 +4,7 @@ import { Footer } from "../components/Footer";
 import { Header } from "../components/Header";
 import { Hero } from "../components/Hero";
 import { Process } from "../components/Process";
+import { Resources } from "../components/Resources";
 import { Services } from "../components/Services";
 import { SiteContentProvider } from "../context/SiteContentContext";
 
@@ -16,6 +17,7 @@ export function HomePage() {
         <Services />
         <About />
         <Process />
+        <Resources />
         <Contact />
       </main>
       <Footer />

@@ -1,5 +1,6 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { getResourcePublicUrl, RESOURCES_BUCKET, safeStorageFileName } from "../lib/resourceStorage";
 import { getSupabase } from "../lib/supabase";
 import "../admin/admin.css";
 
@@ -89,6 +90,31 @@ type InboxRow = {
   message: string;
 };
 
+type ResourcesHeadingForm = {
+  section_label: string;
+  section_title: string;
+};
+
+type ResourceCategoryRow = {
+  id: string;
+  sort_order: number;
+  name: string;
+};
+
+type SiteResourceRow = {
+  id: string;
+  category_id: string;
+  sort_order: number;
+  title: string;
+  description: string;
+  storage_path: string;
+  file_name: string;
+  file_size: number | null;
+  mime_type: string | null;
+  is_published: boolean;
+  created_at: string;
+};
+
 const initialSiteContact: SiteContactForm = {
   office_line: "Toronto, Ontario — serving clients across Canada",
   address_short: "Toronto, ON",
@@ -156,6 +182,18 @@ export function AdminEditor() {
   const [processSteps, setProcessSteps] = useState<ProcessStepRow[]>([]);
   const [siteContact, setSiteContact] = useState<SiteContactForm>(initialSiteContact);
   const [submissions, setSubmissions] = useState<InboxRow[]>([]);
+  const [resourcesHeading, setResourcesHeading] = useState<ResourcesHeadingForm>({
+    section_label: "Resources",
+    section_title: "",
+  });
+  const [resourceCategories, setResourceCategories] = useState<ResourceCategoryRow[]>([]);
+  const [siteResources, setSiteResources] = useState<SiteResourceRow[]>([]);
+  const [newUploadCategoryId, setNewUploadCategoryId] = useState("");
+  const [newUploadTitle, setNewUploadTitle] = useState("");
+  const [newUploadDesc, setNewUploadDesc] = useState("");
+  const [newUploadPublished, setNewUploadPublished] = useState(true);
+  const [newUploadFile, setNewUploadFile] = useState<File | null>(null);
+  const [resourceBusy, setResourceBusy] = useState(false);
 
   const showOk = (text: string) => setBanner({ type: "ok", text });
   const showErr = (text: string) => setBanner({ type: "err", text });
@@ -181,6 +219,9 @@ export function AdminEditor() {
       procStepsRes,
       siteContactRes,
       inboxRes,
+      resSecRes,
+      resCatRes,
+      resFilesRes,
     ] = await Promise.all([
       sb.from("hero_section").select("*").eq("id", 1).maybeSingle(),
       sb.from("hero_stats").select("*").order("sort_order", { ascending: true }),
@@ -193,6 +234,9 @@ export function AdminEditor() {
       sb.from("process_steps").select("*").order("sort_order", { ascending: true }),
       sb.from("site_contact").select("*").eq("id", 1).maybeSingle(),
       sb.from("contact_submissions").select("*").order("created_at", { ascending: false }).limit(40),
+      sb.from("resources_section").select("*").eq("id", 1).maybeSingle(),
+      sb.from("resource_categories").select("*").order("sort_order", { ascending: true }),
+      sb.from("site_resources").select("*").order("sort_order", { ascending: true }),
     ]);
 
     if (heroRes.error) showErr(formatSupabaseErr(heroRes.error));
@@ -338,6 +382,42 @@ export function AdminEditor() {
     if (inboxRes.error) showErr(formatSupabaseErr(inboxRes.error));
     else {
       setSubmissions((inboxRes.data ?? []) as InboxRow[]);
+    }
+
+    const missingTbl = (code: string | undefined) => code === "PGRST205";
+
+    if (resSecRes.error && !missingTbl(resSecRes.error.code)) {
+      showErr(formatSupabaseErr(resSecRes.error));
+    } else if (resSecRes.data) {
+      const r = resSecRes.data as Record<string, string>;
+      setResourcesHeading({
+        section_label: r.section_label ?? "Resources",
+        section_title: r.section_title ?? "",
+      });
+    }
+
+    if (resCatRes.error && !missingTbl(resCatRes.error.code)) {
+      showErr(formatSupabaseErr(resCatRes.error));
+    } else if (!resCatRes.error) {
+      const mapped =
+        ((resCatRes.data ?? []) as { id: string; sort_order: number; name: string }[]).map((c) => ({
+          id: c.id,
+          sort_order: c.sort_order,
+          name: c.name,
+        })) ?? [];
+      setResourceCategories(mapped);
+    }
+
+    if (resFilesRes.error && !missingTbl(resFilesRes.error.code)) {
+      showErr(formatSupabaseErr(resFilesRes.error));
+    } else if (!resFilesRes.error) {
+      setSiteResources(
+        ((resFilesRes.data ?? []) as SiteResourceRow[]).map((row) => ({
+          ...row,
+          description: row.description ?? "",
+          file_name: row.file_name ?? "",
+        }))
+      );
     }
 
     setLoading(false);
@@ -684,6 +764,213 @@ export function AdminEditor() {
       showOk("Submission deleted.");
       await loadAll();
     }
+  }
+
+  async function saveResourcesHeading(e: FormEvent) {
+    e.preventDefault();
+    if (!sb) return;
+    const { error } = await sb.from("resources_section").upsert(
+      {
+        id: 1,
+        section_label: resourcesHeading.section_label.trim(),
+        section_title: resourcesHeading.section_title.trim(),
+      },
+      { onConflict: "id" }
+    );
+    if (error) showErr(formatSupabaseErr(error));
+    else showOk("Resources heading saved.");
+  }
+
+  async function persistResourceCategories() {
+    if (!sb) return;
+    const { data: remote } = await sb.from("resource_categories").select("id");
+    const remoteIds = new Set((remote ?? []).map((r: { id: string }) => r.id));
+    const keepIds = new Set(
+      resourceCategories.filter((c) => !c.id.startsWith("pending-")).map((c) => c.id)
+    );
+    for (const id of remoteIds) {
+      if (!keepIds.has(id)) {
+        const inUse = siteResources.some((r) => r.category_id === id);
+        if (inUse) {
+          showErr(
+            "Cannot delete a category that still has files. Reassign or delete those resources first."
+          );
+          return;
+        }
+        const { error } = await sb.from("resource_categories").delete().eq("id", id);
+        if (error) {
+          showErr(formatSupabaseErr(error));
+          return;
+        }
+      }
+    }
+    for (const row of resourceCategories) {
+      if (!row.name.trim()) continue;
+      if (row.id.startsWith("pending-")) {
+        const { error } = await sb.from("resource_categories").insert({
+          sort_order: row.sort_order,
+          name: row.name.trim(),
+        });
+        if (error) {
+          showErr(formatSupabaseErr(error));
+          return;
+        }
+      } else {
+        const { error } = await sb
+          .from("resource_categories")
+          .update({
+            sort_order: row.sort_order,
+            name: row.name.trim(),
+          })
+          .eq("id", row.id);
+        if (error) {
+          showErr(formatSupabaseErr(error));
+          return;
+        }
+      }
+    }
+    showOk("Resource categories saved.");
+    await loadAll();
+  }
+
+  function addResourceCategory() {
+    setResourceCategories((rows) => [
+      ...rows,
+      { id: pendingId(), sort_order: rows.length, name: "" },
+    ]);
+  }
+
+  async function submitNewResource(e: FormEvent) {
+    e.preventDefault();
+    if (!sb || !newUploadFile) {
+      showErr("Choose a file to upload.");
+      return;
+    }
+    const catId = newUploadCategoryId.trim();
+    if (!catId || catId.startsWith("pending-")) {
+      showErr("Save new categories first, then choose one for the upload.");
+      return;
+    }
+    const title =
+      newUploadTitle.trim() ||
+      safeStorageFileName(newUploadFile.name).replace(/\.[^.]+$/, "") ||
+      "Untitled";
+    setResourceBusy(true);
+    const id = crypto.randomUUID();
+    const safe = safeStorageFileName(newUploadFile.name);
+    const path = `${id}/${safe}`;
+    const { error: upErr } = await sb.storage.from(RESOURCES_BUCKET).upload(path, newUploadFile, {
+      contentType: newUploadFile.type || undefined,
+      upsert: false,
+    });
+    if (upErr) {
+      setResourceBusy(false);
+      showErr(upErr.message);
+      return;
+    }
+    const inCat = siteResources.filter((r) => r.category_id === catId);
+    const maxSort = inCat.reduce((m, r) => Math.max(m, r.sort_order), -1);
+    const { error: insErr } = await sb.from("site_resources").insert({
+      id,
+      category_id: catId,
+      sort_order: maxSort + 1,
+      title,
+      description: newUploadDesc.trim(),
+      storage_path: path,
+      file_name: newUploadFile.name,
+      file_size: newUploadFile.size,
+      mime_type: newUploadFile.type || null,
+      is_published: newUploadPublished,
+    });
+    setResourceBusy(false);
+    if (insErr) {
+      await sb.storage.from(RESOURCES_BUCKET).remove([path]);
+      showErr(formatSupabaseErr(insErr));
+      return;
+    }
+    showOk("Resource uploaded.");
+    setNewUploadTitle("");
+    setNewUploadDesc("");
+    setNewUploadFile(null);
+    await loadAll();
+  }
+
+  async function saveSiteResourceRow(id: string) {
+    if (!sb) return;
+    const row = siteResources.find((r) => r.id === id);
+    if (!row || !row.title.trim()) {
+      showErr("Title is required.");
+      return;
+    }
+    const { error } = await sb
+      .from("site_resources")
+      .update({
+        category_id: row.category_id,
+        sort_order: row.sort_order,
+        title: row.title.trim(),
+        description: row.description.trim(),
+        is_published: row.is_published,
+      })
+      .eq("id", id);
+    if (error) showErr(formatSupabaseErr(error));
+    else {
+      showOk("Resource updated.");
+      await loadAll();
+    }
+  }
+
+  async function deleteSiteResource(id: string) {
+    if (!sb) return;
+    if (!window.confirm("Delete this file from storage and the site?")) return;
+    const row = siteResources.find((r) => r.id === id);
+    if (!row) return;
+    const { error: stErr } = await sb.storage.from(RESOURCES_BUCKET).remove([row.storage_path]);
+    if (stErr) console.error(stErr);
+    const { error } = await sb.from("site_resources").delete().eq("id", id);
+    if (error) showErr(formatSupabaseErr(error));
+    else {
+      showOk("Resource deleted.");
+      await loadAll();
+    }
+  }
+
+  async function replaceSiteResourceFile(id: string, file: File | undefined) {
+    if (!sb || !file) return;
+    const row = siteResources.find((r) => r.id === id);
+    if (!row) return;
+    setResourceBusy(true);
+    const safe = safeStorageFileName(file.name);
+    const path = `${id}/${safe}`;
+    const { error: upErr } = await sb.storage.from(RESOURCES_BUCKET).upload(path, file, {
+      contentType: file.type || undefined,
+      upsert: true,
+    });
+    if (upErr) {
+      setResourceBusy(false);
+      showErr(upErr.message);
+      return;
+    }
+    const oldPath = row.storage_path;
+    const { error: dbErr } = await sb
+      .from("site_resources")
+      .update({
+        storage_path: path,
+        file_name: file.name,
+        file_size: file.size,
+        mime_type: file.type || null,
+      })
+      .eq("id", id);
+    if (dbErr) {
+      setResourceBusy(false);
+      showErr(formatSupabaseErr(dbErr));
+      return;
+    }
+    if (oldPath !== path) {
+      await sb.storage.from(RESOURCES_BUCKET).remove([oldPath]);
+    }
+    setResourceBusy(false);
+    showOk("File replaced.");
+    await loadAll();
   }
 
   function addFeature() {
@@ -1248,6 +1535,293 @@ export function AdminEditor() {
                 Save process steps
               </button>
             </div>
+          </section>
+
+          <section className="admin-card">
+            <h2>Public resources</h2>
+            <p className="admin-muted" style={{ marginBottom: "1rem" }}>
+              Files are stored in the Supabase Storage bucket <code>Resources</code> (create policies via{" "}
+              <code>admin_auth.sql</code> or <code>migrate_resources.sql</code>). Visitors only see rows marked{" "}
+              <strong>published</strong>.
+            </p>
+
+            <h3 className="admin-h3" style={{ marginTop: 0 }}>
+              Section heading
+            </h3>
+            <form className="admin-grid" onSubmit={(e) => void saveResourcesHeading(e)}>
+              <div className="admin-grid-2">
+                <div className="admin-field">
+                  <label htmlFor="res-sec-label">Label</label>
+                  <input
+                    id="res-sec-label"
+                    value={resourcesHeading.section_label}
+                    onChange={(e) =>
+                      setResourcesHeading((s) => ({ ...s, section_label: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="admin-field">
+                  <label htmlFor="res-sec-title">Title</label>
+                  <input
+                    id="res-sec-title"
+                    value={resourcesHeading.section_title}
+                    onChange={(e) =>
+                      setResourcesHeading((s) => ({ ...s, section_title: e.target.value }))
+                    }
+                  />
+                </div>
+              </div>
+              <button type="submit" className="btn btn--primary-solid btn--small">
+                Save resources heading
+              </button>
+            </form>
+
+            <h3 className="admin-h3">Categories</h3>
+            <p className="admin-muted" style={{ marginBottom: "0.75rem" }}>
+              Add groups such as “Tax guides” or “Templates”. Save before uploading files into a new category.
+            </p>
+            {resourceCategories.map((row) => (
+              <div key={row.id} className="admin-service-block" style={{ marginBottom: "0.75rem" }}>
+                <div className="admin-row-actions" style={{ marginBottom: "0.5rem" }}>
+                  <label className="admin-muted">
+                    Order{" "}
+                    <input
+                      type="number"
+                      value={row.sort_order}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        setResourceCategories((rows) =>
+                          rows.map((r) => (r.id === row.id ? { ...r, sort_order: v } : r))
+                        );
+                      }}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="btn btn--danger-outline btn--small"
+                    onClick={() =>
+                      setResourceCategories((rows) => rows.filter((r) => r.id !== row.id))
+                    }
+                  >
+                    Remove
+                  </button>
+                </div>
+                <div className="admin-field">
+                  <label>Category name</label>
+                  <input
+                    value={row.name}
+                    onChange={(e) =>
+                      setResourceCategories((rows) =>
+                        rows.map((r) => (r.id === row.id ? { ...r, name: e.target.value } : r))
+                      )
+                    }
+                  />
+                </div>
+              </div>
+            ))}
+            <div className="admin-row-actions">
+              <button type="button" className="btn btn--outline-dark btn--small" onClick={addResourceCategory}>
+                Add category
+              </button>
+              <button
+                type="button"
+                className="btn btn--gold btn--small"
+                onClick={() => void persistResourceCategories()}
+              >
+                Save categories
+              </button>
+            </div>
+
+            <h3 className="admin-h3">Upload a file</h3>
+            <form className="admin-grid" onSubmit={(e) => void submitNewResource(e)}>
+              <div className="admin-field">
+                <label htmlFor="res-up-cat">Category</label>
+                <select
+                  id="res-up-cat"
+                  value={newUploadCategoryId}
+                  onChange={(e) => setNewUploadCategoryId(e.target.value)}
+                  disabled={resourceCategories.filter((c) => !c.id.startsWith("pending-")).length === 0}
+                >
+                  <option value="">Select category</option>
+                  {resourceCategories
+                    .filter((c) => !c.id.startsWith("pending-"))
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name || "(unnamed)"}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div className="admin-field">
+                <label htmlFor="res-up-title">Title (optional — defaults from filename)</label>
+                <input
+                  id="res-up-title"
+                  value={newUploadTitle}
+                  onChange={(e) => setNewUploadTitle(e.target.value)}
+                />
+              </div>
+              <div className="admin-field">
+                <label htmlFor="res-up-desc">Short description</label>
+                <textarea
+                  id="res-up-desc"
+                  rows={2}
+                  value={newUploadDesc}
+                  onChange={(e) => setNewUploadDesc(e.target.value)}
+                />
+              </div>
+              <label className="admin-muted" style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                <input
+                  type="checkbox"
+                  checked={newUploadPublished}
+                  onChange={(e) => setNewUploadPublished(e.target.checked)}
+                />
+                Published (visible on site)
+              </label>
+              <div className="admin-field">
+                <label htmlFor="res-up-file">File</label>
+                <input
+                  id="res-up-file"
+                  type="file"
+                  onChange={(e) => setNewUploadFile(e.target.files?.[0] ?? null)}
+                />
+              </div>
+              <button type="submit" className="btn btn--primary-solid btn--small" disabled={resourceBusy}>
+                Upload resource
+              </button>
+            </form>
+
+            <h3 className="admin-h3">Existing files</h3>
+            {siteResources.length === 0 ? (
+              <p className="admin-muted">No uploads yet.</p>
+            ) : (
+              <div className="admin-table-wrap">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Title</th>
+                      <th>Category</th>
+                      <th>Order</th>
+                      <th>Published</th>
+                      <th>File</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {siteResources.map((row) => (
+                      <tr key={row.id}>
+                        <td>
+                          <input
+                            value={row.title}
+                            onChange={(e) =>
+                              setSiteResources((rows) =>
+                                rows.map((r) => (r.id === row.id ? { ...r, title: e.target.value } : r))
+                              )
+                            }
+                            style={{ minWidth: "8rem" }}
+                          />
+                          <textarea
+                            value={row.description}
+                            placeholder="Description"
+                            rows={2}
+                            onChange={(e) =>
+                              setSiteResources((rows) =>
+                                rows.map((r) =>
+                                  r.id === row.id ? { ...r, description: e.target.value } : r
+                                )
+                              )
+                            }
+                            style={{ display: "block", marginTop: "0.35rem", minWidth: "12rem" }}
+                          />
+                        </td>
+                        <td>
+                          <select
+                            value={row.category_id}
+                            onChange={(e) =>
+                              setSiteResources((rows) =>
+                                rows.map((r) =>
+                                  r.id === row.id ? { ...r, category_id: e.target.value } : r
+                                )
+                              )
+                            }
+                          >
+                            {resourceCategories
+                              .filter((c) => !c.id.startsWith("pending-"))
+                              .map((c) => (
+                                <option key={c.id} value={c.id}>
+                                  {c.name || "(unnamed)"}
+                                </option>
+                              ))}
+                          </select>
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            value={row.sort_order}
+                            onChange={(e) =>
+                              setSiteResources((rows) =>
+                                rows.map((r) =>
+                                  r.id === row.id
+                                    ? { ...r, sort_order: Number(e.target.value) }
+                                    : r
+                                )
+                              )
+                            }
+                            style={{ width: "4rem" }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="checkbox"
+                            checked={row.is_published}
+                            onChange={(e) =>
+                              setSiteResources((rows) =>
+                                rows.map((r) =>
+                                  r.id === row.id ? { ...r, is_published: e.target.checked } : r
+                                )
+                              )
+                            }
+                          />
+                        </td>
+                        <td>
+                          <span className="admin-muted" style={{ fontSize: "0.75rem" }}>
+                            {row.file_name}
+                          </span>
+                          <br />
+                          <a href={getResourcePublicUrl(sb, row.storage_path)} target="_blank" rel="noopener noreferrer">
+                            Open
+                          </a>
+                          <input
+                            type="file"
+                            style={{ display: "block", marginTop: "0.35rem", maxWidth: "10rem" }}
+                            onChange={(e) => void replaceSiteResourceFile(row.id, e.target.files?.[0])}
+                            disabled={resourceBusy}
+                          />
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className="btn btn--gold btn--small"
+                            onClick={() => void saveSiteResourceRow(row.id)}
+                            disabled={resourceBusy}
+                          >
+                            Save row
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn--danger-outline btn--small"
+                            style={{ marginTop: "0.35rem", display: "block" }}
+                            onClick={() => void deleteSiteResource(row.id)}
+                            disabled={resourceBusy}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </section>
 
           <section className="admin-card">

@@ -191,6 +191,126 @@ create policy "Editors delete contact submissions"
   using (public.is_site_editor());
 
 -- ---------------------------------------------------------------------------
+-- Public resources (Storage bucket "Resources" + tables from schema.sql)
+-- ---------------------------------------------------------------------------
+
+insert into storage.buckets (id, name, public)
+values ('Resources', 'Resources', true)
+on conflict (id) do nothing;
+
+drop policy if exists "Resources storage public read" on storage.objects;
+create policy "Resources storage public read"
+  on storage.objects
+  for select
+  to public
+  using (bucket_id = 'Resources');
+
+drop policy if exists "Resources storage editors insert" on storage.objects;
+create policy "Resources storage editors insert"
+  on storage.objects
+  for insert
+  to authenticated
+  with check (bucket_id = 'Resources' and public.is_site_editor());
+
+drop policy if exists "Resources storage editors update" on storage.objects;
+create policy "Resources storage editors update"
+  on storage.objects
+  for update
+  to authenticated
+  using (bucket_id = 'Resources' and public.is_site_editor())
+  with check (bucket_id = 'Resources' and public.is_site_editor());
+
+drop policy if exists "Resources storage editors delete" on storage.objects;
+create policy "Resources storage editors delete"
+  on storage.objects
+  for delete
+  to authenticated
+  using (bucket_id = 'Resources' and public.is_site_editor());
+
+drop policy if exists "Allow public read resources_section" on public.resources_section;
+create policy "Allow public read resources_section"
+  on public.resources_section
+  for select
+  to anon, authenticated
+  using (true);
+
+drop policy if exists "Allow public read resource_categories" on public.resource_categories;
+create policy "Allow public read resource_categories"
+  on public.resource_categories
+  for select
+  to anon, authenticated
+  using (true);
+
+drop policy if exists "Read published site_resources" on public.site_resources;
+create policy "Read published site_resources"
+  on public.site_resources
+  for select
+  to anon, authenticated
+  using (is_published or public.is_site_editor());
+
+drop policy if exists "Editors insert resources_section" on public.resources_section;
+drop policy if exists "Editors update resources_section" on public.resources_section;
+
+create policy "Editors insert resources_section"
+  on public.resources_section
+  for insert
+  to authenticated
+  with check (public.is_site_editor());
+
+create policy "Editors update resources_section"
+  on public.resources_section
+  for update
+  to authenticated
+  using (public.is_site_editor())
+  with check (public.is_site_editor());
+
+drop policy if exists "Editors insert resource_categories" on public.resource_categories;
+drop policy if exists "Editors update resource_categories" on public.resource_categories;
+drop policy if exists "Editors delete resource_categories" on public.resource_categories;
+
+create policy "Editors insert resource_categories"
+  on public.resource_categories
+  for insert
+  to authenticated
+  with check (public.is_site_editor());
+
+create policy "Editors update resource_categories"
+  on public.resource_categories
+  for update
+  to authenticated
+  using (public.is_site_editor())
+  with check (public.is_site_editor());
+
+create policy "Editors delete resource_categories"
+  on public.resource_categories
+  for delete
+  to authenticated
+  using (public.is_site_editor());
+
+drop policy if exists "Editors insert site_resources" on public.site_resources;
+drop policy if exists "Editors update site_resources" on public.site_resources;
+drop policy if exists "Editors delete site_resources" on public.site_resources;
+
+create policy "Editors insert site_resources"
+  on public.site_resources
+  for insert
+  to authenticated
+  with check (public.is_site_editor());
+
+create policy "Editors update site_resources"
+  on public.site_resources
+  for update
+  to authenticated
+  using (public.is_site_editor())
+  with check (public.is_site_editor());
+
+create policy "Editors delete site_resources"
+  on public.site_resources
+  for delete
+  to authenticated
+  using (public.is_site_editor());
+
+-- ---------------------------------------------------------------------------
 -- Add at least one editor (use the same email as your Supabase Auth user):
 --   insert into public.allowed_editors (email) values ('you@company.com');
 -- Disable public sign-ups in Authentication → Providers → Email so only you

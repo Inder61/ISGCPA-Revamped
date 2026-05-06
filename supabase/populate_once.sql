@@ -32,6 +32,13 @@ grant insert on table public.contact_submissions to anon, authenticated;
 grant select, delete on table public.contact_submissions to authenticated;
 grant insert, update, delete on table public.site_contact to authenticated;
 
+grant select on table public.resources_section to anon, authenticated;
+grant select on table public.resource_categories to anon, authenticated;
+grant select on table public.site_resources to anon, authenticated;
+grant insert, update, delete on table public.resources_section to authenticated;
+grant insert, update, delete on table public.resource_categories to authenticated;
+grant insert, update, delete on table public.site_resources to authenticated;
+
 -- Singleton hero copy (insert or replace row id = 1)
 insert into public.hero_section (
   id,
@@ -180,6 +187,16 @@ on conflict (id) do update set
   brand_accent = excluded.brand_accent,
   updated_at = now();
 
+-- Resources section heading (bucket + RLS live in admin_auth.sql)
+insert into public.resources_section (id, section_label, section_title) values (
+  1,
+  'Resources',
+  'Guides, templates, and reference materials.'
+)
+on conflict (id) do update set
+  section_label = excluded.section_label,
+  section_title = excluded.section_title;
+
 commit;
 
 -- Optional checks (run separately if you want to verify):
@@ -194,3 +211,6 @@ commit;
 -- select * from public.process_steps order by sort_order;
 -- select * from public.site_contact;
 -- select * from public.contact_submissions order by created_at desc;
+-- select * from public.resources_section;
+-- select * from public.resource_categories order by sort_order;
+-- select * from public.site_resources order by sort_order;
