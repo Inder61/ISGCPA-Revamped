@@ -984,3 +984,206 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ——— Lead popup ——— */
+.lead-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: clamp(1rem, 4vw, 2.5rem);
+  background: rgba(6, 28, 25, 0.68);
+  backdrop-filter: blur(2px);
+}
+
+.lead-popup {
+  position: relative;
+  width: min(940px, 100%);
+  max-height: min(760px, calc(100vh - 2rem));
+  display: grid;
+  grid-template-columns: minmax(280px, 0.95fr) minmax(320px, 1fr);
+  overflow: hidden;
+  background: var(--color-cream);
+  color: var(--color-ink);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.22);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.34);
+  animation: lead-popup-enter 0.28s ease both;
+}
+
+@keyframes lead-popup-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.85rem) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.lead-popup__close {
+  position: absolute;
+  top: 0.9rem;
+  right: 0.9rem;
+  z-index: 1;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(var(--color-primary-rgb), 0.18);
+  background: rgba(247, 244, 239, 0.92);
+  color: var(--color-primary);
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.lead-popup__close:hover {
+  border-color: var(--color-gold);
+  color: var(--color-ink);
+}
+
+.lead-popup__visual {
+  position: relative;
+  min-height: 560px;
+  background: var(--color-primary);
+}
+
+.lead-popup__visual img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.lead-popup__visual-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(13, 84, 74, 0.08), rgba(10, 64, 57, 0.2)),
+    linear-gradient(90deg, rgba(0, 0, 0, 0), rgba(13, 84, 74, 0.12));
+  pointer-events: none;
+}
+
+.lead-popup__content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(2rem, 5vw, 4rem);
+  background: var(--color-cream);
+}
+
+.lead-popup__logo-wrap {
+  width: min(240px, 76%);
+  margin-bottom: clamp(2rem, 5vw, 3.25rem);
+  padding: 0.65rem 0.8rem;
+  background: var(--color-primary);
+}
+
+.lead-popup__logo {
+  width: 100%;
+  height: auto;
+}
+
+.lead-popup__eyebrow {
+  margin-bottom: 0.85rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-gold);
+}
+
+.lead-popup h2 {
+  margin-bottom: 1rem;
+  padding-right: 1.25rem;
+  max-width: 11ch;
+  font-size: clamp(2.35rem, 5vw, 4rem);
+  line-height: 0.98;
+  color: var(--color-primary-dark);
+}
+
+.lead-popup__content > p:last-of-type {
+  max-width: 35ch;
+  margin-bottom: 1.75rem;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--color-muted);
+}
+
+.lead-popup__actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  max-width: 28rem;
+}
+
+.lead-popup__actions .btn {
+  min-height: 3.2rem;
+  padding: 0.8rem 0.85rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.09em;
+}
+
+.lead-popup-tab {
+  position: fixed;
+  right: clamp(1rem, 3vw, 2rem);
+  bottom: clamp(1rem, 3vw, 2rem);
+  z-index: 119;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--color-gold);
+  background: var(--color-primary);
+  color: var(--color-cream);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  box-shadow: 0 14px 34px rgba(10, 64, 57, 0.2);
+}
+
+.lead-popup-tab:hover {
+  background: var(--color-primary-dark);
+}
+
+@media (max-width: 760px) {
+  .lead-popup-backdrop {
+    align-items: end;
+    padding: 1rem;
+  }
+
+  .lead-popup {
+    grid-template-columns: 1fr;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+  }
+
+  .lead-popup__visual {
+    min-height: 210px;
+    max-height: 34vh;
+  }
+
+  .lead-popup__content {
+    padding: 1.5rem;
+  }
+
+  .lead-popup__logo-wrap {
+    width: 172px;
+    margin-bottom: 1.35rem;
+  }
+
+  .lead-popup h2 {
+    max-width: 12ch;
+    font-size: clamp(2rem, 11vw, 2.85rem);
+  }
+}
+
+@media (max-width: 480px) {
+  .lead-popup__actions {
+    grid-template-columns: 1fr;
+  }
+
+  .lead-popup__actions .btn {
+    width: 100%;
+  }
+}

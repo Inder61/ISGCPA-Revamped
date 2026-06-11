@@ -3,6 +3,7 @@ import { Contact } from "../components/Contact";
 import { Footer } from "../components/Footer";
 import { Header } from "../components/Header";
 import { Hero } from "../components/Hero";
+import { LeadPopup } from "../components/LeadPopup";
 import { Process } from "../components/Process";
 import { Resources } from "../components/Resources";
 import { Services } from "../components/Services";
@@ -21,6 +22,7 @@ export function HomePage() {
         <Contact />
       </main>
       <Footer />
+      <LeadPopup />
     </SiteContentProvider>
   );
 }
